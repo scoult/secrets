@@ -31,25 +31,27 @@ class AzureKeyVaultResolverTest extends TestCase
         ]);
 
         $mockClient = $this->createMock(ClientInterface::class);
+        $capturedRequest = null;
         $mockClient->expects($this->once())
             ->method('sendRequest')
-            ->with($this->callback(function ($request) {
-                // Verify request URI query string contains api-version
-                $uri = (string) $request->getUri();
-                $this->assertStringContainsString('api-version=7.4', $uri);
-
-                // Verify Bearer authentication
-                $this->assertTrue($request->hasHeader('Authorization'));
-                $this->assertEquals('Bearer token123', $request->getHeaderLine('Authorization'));
-
-                return true;
-            }))
-            ->willReturn(new Response(200, [], $mockResponseBody));
+            ->willReturnCallback(function ($request) use (&$capturedRequest, $mockResponseBody) {
+                $capturedRequest = $request;
+                return new Response(200, [], $mockResponseBody);
+            });
 
         $resolver = new AzureKeyVaultResolver('token123', $mockClient);
         $result = $resolver->resolve($refValue);
 
         $this->assertEquals('keyvault_secret_value', $result);
+        $this->assertNotNull($capturedRequest);
+
+        // Verify request URI query string contains api-version
+        $uri = (string) $capturedRequest->getUri();
+        $this->assertStringContainsString('api-version=7.4', $uri);
+
+        // Verify Bearer authentication
+        $this->assertTrue($capturedRequest->hasHeader('Authorization'));
+        $this->assertEquals('Bearer token123', $capturedRequest->getHeaderLine('Authorization'));
     }
 
     public function testResolveSuccessWithTokenCallback(): void
@@ -58,13 +60,13 @@ class AzureKeyVaultResolverTest extends TestCase
         $mockResponseBody = json_encode(['value' => 'keyvault_secret_value']);
 
         $mockClient = $this->createMock(ClientInterface::class);
+        $capturedRequest = null;
         $mockClient->expects($this->once())
             ->method('sendRequest')
-            ->with($this->callback(function ($request) {
-                $this->assertEquals('Bearer generated_token_abc', $request->getHeaderLine('Authorization'));
-                return true;
-            }))
-            ->willReturn(new Response(200, [], $mockResponseBody));
+            ->willReturnCallback(function ($request) use (&$capturedRequest, $mockResponseBody) {
+                $capturedRequest = $request;
+                return new Response(200, [], $mockResponseBody);
+            });
 
         $tokenCallback = function () {
             return 'generated_token_abc';
@@ -74,6 +76,8 @@ class AzureKeyVaultResolverTest extends TestCase
         $result = $resolver->resolve($refValue);
 
         $this->assertEquals('keyvault_secret_value', $result);
+        $this->assertNotNull($capturedRequest);
+        $this->assertEquals('Bearer generated_token_abc', $capturedRequest->getHeaderLine('Authorization'));
     }
 
     public function testResolveNotFoundReturnsNull(): void

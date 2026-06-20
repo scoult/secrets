@@ -19,7 +19,8 @@
         "phpunit/phpunit": "^10.0 || ^11.0",
         "guzzlehttp/guzzle": "^7.8",
         "guzzlehttp/psr7": "^2.6",
-        "mockery/mockery": "^1.6"
+        "mockery/mockery": "^1.6",
+        "aws/aws-sdk-php": "^3.0"
     },
     "autoload": {
         "psr-4": {
@@ -32,6 +33,7 @@
         }
     },
     "suggest": {
-        "psr/simple-cache-implementation": "To enable caching of secrets using CachedSecretsProvider"
+        "psr/simple-cache-implementation": "To enable caching of secrets using CachedSecretsProvider",
+        "aws/aws-sdk-php": "To enable fetching of secrets from AWS Secrets Manager using AwsSecretsManagerProvider"
     }
 }

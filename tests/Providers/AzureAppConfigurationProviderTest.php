@@ -127,27 +127,28 @@ class AzureAppConfigurationProviderTest extends TestCase
     public function testHmacHeadersAreGeneratedCorrectly(): void
     {
         $mockClient = $this->createMock(ClientInterface::class);
+        $capturedRequest = null;
         $mockClient->expects($this->once())
             ->method('sendRequest')
-            ->with($this->callback(function ($request) {
-                // Verify standard headers are set
-                $this->assertTrue($request->hasHeader('Host'));
-                $this->assertEquals('teststore.azconfig.io', $request->getHeaderLine('Host'));
-
-                $this->assertTrue($request->hasHeader('x-ms-date'));
-                $this->assertTrue($request->hasHeader('x-ms-content-sha256'));
-
-                $this->assertTrue($request->hasHeader('Authorization'));
-                $auth = $request->getHeaderLine('Authorization');
-                $this->assertStringStartsWith('HMAC-SHA256 Credential=myId', $auth);
-                $this->assertStringContainsString('SignedHeaders=x-ms-date;host;x-ms-content-sha256', $auth);
-                $this->assertStringContainsString('Signature=', $auth);
-
-                return true;
-            }))
-            ->willReturn(new Response(200, [], json_encode(['key' => 'k', 'value' => 'v'])));
+            ->willReturnCallback(function ($request) use (&$capturedRequest) {
+                $capturedRequest = $request;
+                return new Response(200, [], json_encode(['key' => 'k', 'value' => 'v']));
+            });
 
         $provider = new AzureAppConfigurationProvider($this->connStr, $mockClient);
         $provider->get('k');
+
+        $this->assertNotNull($capturedRequest);
+        $this->assertTrue($capturedRequest->hasHeader('Host'));
+        $this->assertEquals('teststore.azconfig.io', $capturedRequest->getHeaderLine('Host'));
+
+        $this->assertTrue($capturedRequest->hasHeader('x-ms-date'));
+        $this->assertTrue($capturedRequest->hasHeader('x-ms-content-sha256'));
+
+        $this->assertTrue($capturedRequest->hasHeader('Authorization'));
+        $auth = $capturedRequest->getHeaderLine('Authorization');
+        $this->assertStringStartsWith('HMAC-SHA256 Credential=myId', $auth);
+        $this->assertStringContainsString('SignedHeaders=x-ms-date;host;x-ms-content-sha256', $auth);
+        $this->assertStringContainsString('Signature=', $auth);
     }
 }

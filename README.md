@@ -90,7 +90,35 @@ $secretValue = $provider->get('database.password');
 
 ---
 
-### 3. Combining Providers with `ChainSecretsProvider`
+### 3. AWS Secrets Manager Provider
+
+This provider integrates with AWS Secrets Manager. It accepts either an instance of `Aws\SecretsManager\SecretsManagerClient` or a configuration array directly.
+
+```php
+use Aws\SecretsManager\SecretsManagerClient;
+use Scoult\Secrets\Providers\AwsSecretsManagerProvider;
+
+// 1. Initialize using configuration array
+$provider = new AwsSecretsManagerProvider([
+    'region' => 'us-west-2',
+    'version' => '2017-10-17'
+]);
+
+// 2. Fetch standard string secret
+$apiKey = $provider->get('my-api-key');
+
+// 3. Fetch from nested JSON secrets
+// If 'my-db-secrets' stores a JSON string: {"username": "admin", "password": "xyz"}
+// You can retrieve sub-keys using colon syntax or options array:
+$dbPassword = $provider->get('my-db-secrets:password');
+
+// Alternatively:
+$dbPassword = $provider->get('my-db-secrets', ['key' => 'password']);
+```
+
+---
+
+### 4. Combining Providers with `ChainSecretsProvider`
 
 Chain multiple providers together. For example, check local environment variables first, falling back to Azure App Configuration:
 
@@ -110,7 +138,7 @@ $dbPassword = $chain->get('database.password');
 
 ---
 
-### 4. Performance Optimization via Caching
+### 5. Performance Optimization via Caching
 
 Repeated HTTP requests to Azure App Configuration on every script execution can impact performance and increase costs. Wrap your provider in `CachedSecretsProvider` using any PSR-16 cache:
 
